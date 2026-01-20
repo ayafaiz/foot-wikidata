@@ -3,225 +3,102 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Clubs de football – Données multidimensionnelles (Wikidata)</title>
+  <title>Exercice 2.4 – Visualisations interactives</title>
 
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Lightbox pour images -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/glightbox/dist/css/glightbox.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/glightbox/dist/js/glightbox.min.js"></script>
 
   <style>
-    body { font-family: Arial, sans-serif; margin: 24px; background: #f5f0e6; }
-    h1 { margin: 0 0 8px; }
-    .small { color: #555; font-size: 13px; }
-    .grid { display: grid; grid-template-columns: 1fr; gap: 18px; margin-top: 16px; }
-    .card { background: #fff; border-radius: 12px; padding: 16px; box-shadow: 0 2px 10px rgba(0,0,0,.08); }
-    img { max-width: 100%; height: auto; border-radius: 10px; }
-    table { width: 100%; border-collapse: collapse; font-size: 14px; }
-    th, td { border-bottom: 1px solid #eee; padding: 8px; text-align: left; vertical-align: top; }
-    .error { background:#fff1f1; border:1px solid #ffd0d0; padding:10px; border-radius:10px; color:#900; }
-    code { background:#f3f3f3; padding:2px 6px; border-radius:6px; }
+    body{font-family:Arial;margin:24px;background:#f5f0e6}
+    h1{margin-bottom:4px}
+    .small{color:#555}
+    .card{background:#fff;padding:16px;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,.08);margin-bottom:18px}
+    input,select{padding:10px;border-radius:10px;border:1px solid #ccc;width:100%;max-width:420px}
+    mark{background:#ffeb3b}
+    .gallery{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-top:12px}
+    .thumb img{width:100%;height:140px;object-fit:cover;border-radius:10px;cursor:pointer}
+    .caption{text-align:center;font-size:13px;color:#444;margin-top:4px}
   </style>
 </head>
 
 <body>
-  <h1>Clubs de football “formateurs” (proxy) – Wikidata</h1>
-  <p class="small">
-    Données multidimensionnelles : quantitatif (<code>playersCount</code>), catégoriel (<code>countryLabel</code>),
-    temporel (<code>founded</code>), spatial (<code>lat</code>/<code>lon</code>), visuel (<code>logo</code>).
+<h1>Exercice 2.4 – Visualisations interactives</h1>
+<p class="small">Texte interactif + images interactives (sans Chart.js).</p>
+
+<!-- TEXTE INTERACTIF -->
+<div class="card">
+  <h2>Visualisation interactive de textes</h2>
+  <input id="search" type="text" placeholder="Rechercher un mot (ex: data, football, web)" />
+
+  <p id="text">
+    La visualisation de données permet de comprendre rapidement des informations complexes.
+    Dans ce projet, nous utilisons des données liées au football, aux clubs, aux joueurs,
+    et aux statistiques. Le texte devient interactif grâce à la recherche et au surlignage
+    dynamique des mots.
   </p>
+</div>
 
-  <div id="msg"></div>
+<!-- IMAGES INTERACTIVES -->
+<div class="card">
+  <h2>Visualisation interactive d’images</h2>
 
-  <div class="grid">
-    <div class="card">
-      <h2>Graphique HTML (Chart.js)</h2>
-      <canvas id="chart" height="120"></canvas>
-      <p class="small">Axe X : clubs — Axe Y : nombre de joueurs (count).</p>
-    </div>
+  <select id="filter">
+    <option value="all">Toutes les catégories</option>
+    <option value="club">Clubs</option>
+    <option value="stadium">Stades</option>
+  </select>
 
-    <div class="card">
-      <h2>Graphique RAWGraphs</h2>
-      <p class="small">
-        Ceci est l’export RAWGraphs. Le fichier attendu est <code>rawgraphs.svg</code>.
-      </p>
-      <img src="rawgraphs.svg" alt="Graphique RAWGraphs (SVG)">
-    </div>
-
-    <div class="card">
-      <h2>Données (extrait)</h2>
-      <div style="overflow:auto;">
-        <table id="dataTable">
-          <thead>
-            <tr>
-              <th>Club</th>
-              <th>Pays</th>
-              <th>Joueurs (count)</th>
-              <th>Fondé</th>
-              <th>Lat</th>
-              <th>Lon</th>
-              <th>Logo</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-      <p class="small">
-        Si le tableau ou le graphique ne s’affiche pas, ouvre la page avec <b>Live Server</b> (pas en double-cliquant).
-      </p>
-    </div>
-  </div>
+  <div class="gallery" id="gallery"></div>
+</div>
 
 <script>
-let chartInstance = null;
+/* ===== TEXTE INTERACTIF ===== */
+const input = document.getElementById("search");
+const textEl = document.getElementById("text");
+const originalText = textEl.textContent;
 
-async function loadCSV() {
-  const msg = document.getElementById("msg");
-  msg.innerHTML = "";
-
-  let text = "";
-  try {
-    const res = await fetch("data.csv");
-    if (!res.ok) throw new Error("Impossible de charger data.csv (HTTP " + res.status + ")");
-    text = await res.text();
-  } catch (e) {
-    msg.innerHTML = `
-      <div class="error">
-        <b>Erreur :</b> ${escapeHtml(String(e.message || e))}<br>
-        ✅ Solution : ouvre <code>index.html</code> avec <b>Live Server</b> dans VS Code et vérifie que <code>data.csv</code> est au même endroit.
-      </div>
-    `;
+input.addEventListener("input", () => {
+  const q = input.value.trim();
+  if (!q) {
+    textEl.innerHTML = originalText;
     return;
   }
+  const regex = new RegExp("(" + q + ")", "gi");
+  textEl.innerHTML = originalText.replace(regex, "<mark>$1</mark>");
+});
 
-  const lines = text.trim().split(/\r?\n/);
-  if (lines.length < 2) {
-    msg.innerHTML = `<div class="error"><b>Erreur :</b> data.csv semble vide.</div>`;
-    return;
-  }
+/* ===== IMAGES INTERACTIVES ===== */
+const images = [
+  {cat:"club", title:"Club 1", url:"https://images.unsplash.com/photo-1518091043644-c1d4457512c6?auto=format&fit=crop&w=800&q=60"},
+  {cat:"club", title:"Club 2", url:"https://images.unsplash.com/photo-1521412644187-c49fa049e84d?auto=format&fit=crop&w=800&q=60"},
+  {cat:"stadium", title:"Stade 1", url:"https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=800&q=60"},
+  {cat:"stadium", title:"Stade 2", url:"https://images.unsplash.com/photo-1522778119026-d647f0596c20?auto=format&fit=crop&w=800&q=60"}
+];
 
-  const headers = parseCSVLine(lines[0]);
+const gallery = document.getElementById("gallery");
+const filter = document.getElementById("filter");
 
-  const idx = (name) => headers.findIndex(h => h.replaceAll('"','').trim() === name);
-
-  const iClubLabel    = idx("clubLabel");
-  const iCountryLabel = idx("countryLabel");
-  const iPlayers      = idx("playersCount");
-  const iFounded      = idx("founded");
-  const iLat          = idx("lat");
-  const iLon          = idx("lon");
-  const iLogo         = idx("logo");
-
-  // Vérification basique des colonnes attendues
-  if (iClubLabel === -1 || iPlayers === -1) {
-    msg.innerHTML = `
-      <div class="error">
-        <b>Colonnes manquantes.</b><br>
-        Ton CSV doit contenir au minimum <code>clubLabel</code> et <code>playersCount</code>.<br>
-        Colonnes trouvées : ${escapeHtml(headers.join(", "))}
-      </div>
-    `;
-    return;
-  }
-
-  const rows = lines.slice(1).map(parseCSVLine);
-
-  // Pour le graphique
-  const labels = [];
-  const values = [];
-
-  // Pour le tableau
-  const tbody = document.querySelector("#dataTable tbody");
-  tbody.innerHTML = "";
-
-  rows.forEach(r => {
-    const club = (r[iClubLabel] ?? "").trim();
-    const country = iCountryLabel !== -1 ? (r[iCountryLabel] ?? "").trim() : "";
-    const founded = iFounded !== -1 ? (r[iFounded] ?? "").trim().slice(0, 10) : "";
-
-    // playersCount peut arriver comme "123" ou "123.0"
-    const n = Number(((r[iPlayers] ?? "0") + "").replaceAll(" ", ""));
-
-    // lat/lon peuvent arriver en texte -> on affiche juste
-    const lat = iLat !== -1 ? (r[iLat] ?? "").trim() : "";
-    const lon = iLon !== -1 ? (r[iLon] ?? "").trim() : "";
-
-    const logo = iLogo !== -1 ? (r[iLogo] ?? "").trim() : "";
-
-    if (club) {
-      labels.push(club);
-      values.push(Number.isFinite(n) ? n : 0);
-
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${escapeHtml(club)}</td>
-        <td>${escapeHtml(country)}</td>
-        <td>${Number.isFinite(n) ? n.toLocaleString("fr-FR") : "0"}</td>
-        <td>${escapeHtml(founded)}</td>
-        <td>${escapeHtml(lat)}</td>
-        <td>${escapeHtml(lon)}</td>
-        <td>${logo ? `<a href="${escapeAttr(logo)}" target="_blank" rel="noopener">logo</a>` : ""}</td>
+function renderGallery(cat="all") {
+  gallery.innerHTML = "";
+  images
+    .filter(img => cat === "all" || img.cat === cat)
+    .forEach(img => {
+      const div = document.createElement("div");
+      div.className = "thumb";
+      div.innerHTML = `
+        <a href="${img.url}" class="glightbox" data-title="${img.title}">
+          <img src="${img.url}" alt="${img.title}">
+        </a>
+        <div class="caption">${img.title}</div>
       `;
-      tbody.appendChild(tr);
-    }
-  });
-
-  // Dessiner le graphique Chart.js
-  const ctx = document.getElementById("chart");
-
-  if (chartInstance) chartInstance.destroy();
-
-  chartInstance = new Chart(ctx, {
-    type: "bar",
-    data: {
-      labels,
-      datasets: [{
-        label: "Nombre de joueurs (count)",
-        data: values
-      }]
-    },
-    options: {
-      responsive: true,
-      scales: {
-        x: { ticks: { maxRotation: 70, minRotation: 70 } }
-      }
-    }
-  });
+      gallery.appendChild(div);
+    });
+  GLightbox({ selector: ".glightbox" });
 }
 
-// --- CSV parser (gère les virgules dans les guillemets) ---
-function parseCSVLine(line) {
-  const cols = [];
-  let cur = "", inQ = false;
-
-  for (const ch of line) {
-    if (ch === '"') inQ = !inQ;
-    else if (ch === ',' && !inQ) { cols.push(cur); cur = ""; }
-    else cur += ch;
-  }
-  cols.push(cur);
-
-  return cols.map(x =>
-    String(x)
-      .replaceAll('""', '"')
-      .replace(/^"|"$/g, '')
-      .trim()
-  );
-}
-
-// --- petits helpers anti-HTML injection ---
-function escapeHtml(s) {
-  return String(s)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
-function escapeAttr(s) {
-  return escapeHtml(s).replaceAll("`", "&#096;");
-}
-
-// Lancer
-loadCSV();
+filter.addEventListener("change", () => renderGallery(filter.value));
+renderGallery();
 </script>
-
 </body>
 </html>
