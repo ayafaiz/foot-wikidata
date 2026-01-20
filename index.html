@@ -1,104 +1,309 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Exercice 2.4 – Visualisations interactives</title>
+  <meta charset="UTF-8">
+  <title>Séance 02 – Visualisations (Football / Wikidata)</title>
 
-  <!-- Lightbox pour images -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/glightbox/dist/css/glightbox.min.css">
-  <script src="https://cdn.jsdelivr.net/npm/glightbox/dist/js/glightbox.min.js"></script>
+  <!-- D3 -->
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <!-- D3 Cloud -->
+  <script src="https://unpkg.com/d3-cloud/build/d3.layout.cloud.js"></script>
 
   <style>
-    body{font-family:Arial;margin:24px;background:#f5f0e6}
-    h1{margin-bottom:4px}
-    .small{color:#555}
-    .card{background:#fff;padding:16px;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,.08);margin-bottom:18px}
-    input,select{padding:10px;border-radius:10px;border:1px solid #ccc;width:100%;max-width:420px}
-    mark{background:#ffeb3b}
-    .gallery{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-top:12px}
-    .thumb img{width:100%;height:140px;object-fit:cover;border-radius:10px;cursor:pointer}
-    .caption{text-align:center;font-size:13px;color:#444;margin-top:4px}
+    body {
+      font-family: Arial, sans-serif;
+      margin: 40px;
+      background: #f5f0e6;
+    }
+
+    h1 { margin-bottom: 10px; }
+    .small { color:#555; margin-top:0; }
+
+    h2 { margin-top: 50px; }
+
+    /* Word cloud */
+    #wordcloud {
+      width: 700px;
+      height: 420px;
+      margin: 16px auto;
+      border: 1px solid #eee;
+      border-radius: 12px;
+      background: #fff;
+      box-shadow: 0 2px 10px rgba(0,0,0,.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .hint {
+      text-align:center;
+      color:#666;
+      font-size: 13px;
+      margin-top: 6px;
+    }
+
+    /* Images */
+    .gallery {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      margin-top: 20px;
+    }
+
+    .gallery img {
+      width: 180px;
+      height: 120px;
+      object-fit: cover;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: 0.25s;
+      border: 1px solid #eee;
+      background: #fff;
+    }
+
+    .gallery img:hover {
+      transform: scale(1.06);
+      opacity: 0.9;
+    }
+
+    /* Lightbox (simple, sans lib) */
+    .lightbox {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.75);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      z-index: 9999;
+    }
+    .lightbox.open { display: flex; }
+    .lightbox-content {
+      max-width: 1100px;
+      width: 100%;
+      background: #111;
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 10px 40px rgba(0,0,0,.35);
+      position: relative;
+    }
+    .lightbox-content img {
+      width: 100%;
+      height: auto;
+      display: block;
+      background: #111;
+    }
+    .lightbox-caption {
+      padding: 10px 14px;
+      color: #ddd;
+      font-size: 14px;
+      background: #111;
+      border-top: 1px solid rgba(255,255,255,.08);
+    }
+    .close-btn {
+      position: absolute;
+      top: 10px;
+      right: 12px;
+      width: 36px;
+      height: 36px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.2);
+      background: rgba(0,0,0,.35);
+      color: #fff;
+      cursor: pointer;
+      font-size: 18px;
+      line-height: 34px;
+      text-align: center;
+    }
   </style>
 </head>
 
 <body>
-<h1>Exercice 2.4 – Visualisations interactives</h1>
-<p class="small">Texte interactif + images interactives (sans Chart.js).</p>
 
-<!-- TEXTE INTERACTIF -->
-<div class="card">
-  <h2>Visualisation interactive de textes</h2>
-  <input id="search" type="text" placeholder="Rechercher un mot (ex: data, football, web)" />
+<h1>Séance 02 – Visualisations interactives</h1>
+<p class="small">
+Thème : <b>Football / Clubs / Données Wikidata</b> — Texte (nuage de mots) + Images (galerie + zoom).
+</p>
 
-  <p id="text">
-    La visualisation de données permet de comprendre rapidement des informations complexes.
-    Dans ce projet, nous utilisons des données liées au football, aux clubs, aux joueurs,
-    et aux statistiques. Le texte devient interactif grâce à la recherche et au surlignage
-    dynamique des mots.
-  </p>
+<!-- TEXTE -->
+<h2>1. Visualisation de textes – Nuage de mots (Football / Wikidata)</h2>
+<p>
+Nuage de mots basé sur des notions de ton projet : clubs, joueurs, coordonnées, Wikidata Query Service,
+RAWGraphs, données, etc. <b>Survol</b> pour voir l’effet, <b>clic</b> pour mettre un mot en focus.
+</p>
+
+<div id="wordcloud"></div>
+<div class="hint">Astuce : clique sur un mot pour le “focus”, clique à nouveau pour annuler.</div>
+
+<!-- IMAGES -->
+<h2>2. Visualisation d’images – Galerie interactive (Zoom)</h2>
+<p>
+Galerie d’images liée au football (stades, ballon, terrain). Clique sur une image pour l’agrandir.
+</p>
+
+<div class="gallery" id="gallery">
+  <!-- Images (thème football) -->
+  <img
+    src="https://images.unsplash.com/photo-1521412644187-c49fa049e84d?auto=format&fit=crop&w=600&q=60"
+    data-full="https://images.unsplash.com/photo-1521412644187-c49fa049e84d?auto=format&fit=crop&w=1600&q=70"
+    data-caption="Match de football – vue terrain"
+    alt="Football terrain">
+  <img
+    src="https://images.unsplash.com/photo-1518091043644-c1d4457512c6?auto=format&fit=crop&w=600&q=60"
+    data-full="https://images.unsplash.com/photo-1518091043644-c1d4457512c6?auto=format&fit=crop&w=1600&q=70"
+    data-caption="Ballon de football – ambiance stade"
+    alt="Ballon football">
+  <img
+    src="https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=600&q=60"
+    data-full="https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=1600&q=70"
+    data-caption="Stade de football – tribunes"
+    alt="Stade tribunes">
+  <img
+    src="https://images.unsplash.com/photo-1522778119026-d647f0596c20?auto=format&fit=crop&w=600&q=60"
+    data-full="https://images.unsplash.com/photo-1522778119026-d647f0596c20?auto=format&fit=crop&w=1600&q=70"
+    data-caption="Stade – vue intérieure"
+    alt="Stade intérieur">
+  <img
+    src="https://images.unsplash.com/photo-1520975661595-6453be3f7070?auto=format&fit=crop&w=600&q=60"
+    data-full="https://images.unsplash.com/photo-1520975661595-6453be3f7070?auto=format&fit=crop&w=1600&q=70"
+    data-caption="Terrain – lignes et ambiance"
+    alt="Terrain lignes">
 </div>
 
-<!-- IMAGES INTERACTIVES -->
-<div class="card">
-  <h2>Visualisation interactive d’images</h2>
-
-  <select id="filter">
-    <option value="all">Toutes les catégories</option>
-    <option value="club">Clubs</option>
-    <option value="stadium">Stades</option>
-  </select>
-
-  <div class="gallery" id="gallery"></div>
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox" aria-hidden="true">
+  <div class="lightbox-content">
+    <button class="close-btn" id="closeBtn" aria-label="Fermer">✕</button>
+    <img id="lightboxImg" src="" alt="">
+    <div class="lightbox-caption" id="lightboxCaption"></div>
+  </div>
 </div>
 
 <script>
-/* ===== TEXTE INTERACTIF ===== */
-const input = document.getElementById("search");
-const textEl = document.getElementById("text");
-const originalText = textEl.textContent;
+  /* =========================
+     1) WORD CLOUD (Football/Wikidata)
+     ========================= */
 
-input.addEventListener("input", () => {
-  const q = input.value.trim();
-  if (!q) {
-    textEl.innerHTML = originalText;
-    return;
+  // Données nuage (thème football + projet Wikidata)
+  const words = [
+    { text: "football", size: 72 },
+    { text: "club", size: 58 },
+    { text: "joueurs", size: 54 },
+    { text: "stade", size: 46 },
+    { text: "wikidata", size: 60 },
+    { text: "requête", size: 44 },
+    { text: "SPARQL", size: 42 },
+    { text: "RAWGraphs", size: 38 },
+    { text: "GitHub", size: 36 },
+    { text: "Pages", size: 34 },
+    { text: "données", size: 50 },
+    { text: "visualisation", size: 48 },
+    { text: "interaction", size: 40 },
+    { text: "latitude", size: 32 },
+    { text: "longitude", size: 32 },
+    { text: "logo", size: 30 },
+    { text: "fondation", size: 28 },
+    { text: "pays", size: 30 },
+    { text: "statistiques", size: 34 },
+    { text: "exploration", size: 30 }
+  ];
+
+  const width = 700;
+  const height = 420;
+
+  const color = d3.scaleOrdinal(d3.schemeTableau10);
+
+  let focusedWord = null;
+
+  d3.layout.cloud()
+    .size([width, height])
+    .words(words)
+    .padding(6)
+    .rotate(() => 0) // plus lisible (0°)
+    .font("Arial")
+    .fontSize(d => d.size)
+    .on("end", draw)
+    .start();
+
+  function draw(wordsDrawn) {
+    const svg = d3.select("#wordcloud")
+      .append("svg")
+      .attr("width", width)
+      .attr("height", height);
+
+    const g = svg.append("g")
+      .attr("transform", `translate(${width / 2}, ${height / 2})`);
+
+    const texts = g.selectAll("text")
+      .data(wordsDrawn)
+      .enter()
+      .append("text")
+      .style("font-size", d => d.size + "px")
+      .style("fill", (d, i) => color(i))
+      .style("cursor", "pointer")
+      .style("opacity", 1)
+      .attr("text-anchor", "middle")
+      .attr("transform", d => `translate(${d.x}, ${d.y}) rotate(${d.rotate})`)
+      .text(d => d.text)
+      .on("mouseover", function () {
+        d3.select(this).style("opacity", 0.65);
+      })
+      .on("mouseout", function () {
+        d3.select(this).style("opacity", 1);
+      })
+      .on("click", function (event, d) {
+        focusedWord = (focusedWord === d.text) ? null : d.text;
+
+        texts.style("opacity", w => {
+          if (!focusedWord) return 1;
+          return w.text === focusedWord ? 1 : 0.18;
+        });
+
+        texts.style("font-weight", w => {
+          if (!focusedWord) return "normal";
+          return w.text === focusedWord ? "700" : "normal";
+        });
+      });
   }
-  const regex = new RegExp("(" + q + ")", "gi");
-  textEl.innerHTML = originalText.replace(regex, "<mark>$1</mark>");
-});
 
-/* ===== IMAGES INTERACTIVES ===== */
-const images = [
-  {cat:"club", title:"Club 1", url:"https://images.unsplash.com/photo-1518091043644-c1d4457512c6?auto=format&fit=crop&w=800&q=60"},
-  {cat:"club", title:"Club 2", url:"https://images.unsplash.com/photo-1521412644187-c49fa049e84d?auto=format&fit=crop&w=800&q=60"},
-  {cat:"stadium", title:"Stade 1", url:"https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=800&q=60"},
-  {cat:"stadium", title:"Stade 2", url:"https://images.unsplash.com/photo-1522778119026-d647f0596c20?auto=format&fit=crop&w=800&q=60"}
-];
+  /* =========================
+     2) IMAGE GALLERY (Lightbox)
+     ========================= */
+  const lightbox = document.getElementById("lightbox");
+  const lightboxImg = document.getElementById("lightboxImg");
+  const lightboxCaption = document.getElementById("lightboxCaption");
+  const closeBtn = document.getElementById("closeBtn");
 
-const gallery = document.getElementById("gallery");
-const filter = document.getElementById("filter");
+  document.getElementById("gallery").addEventListener("click", (e) => {
+    const img = e.target.closest("img");
+    if (!img) return;
 
-function renderGallery(cat="all") {
-  gallery.innerHTML = "";
-  images
-    .filter(img => cat === "all" || img.cat === cat)
-    .forEach(img => {
-      const div = document.createElement("div");
-      div.className = "thumb";
-      div.innerHTML = `
-        <a href="${img.url}" class="glightbox" data-title="${img.title}">
-          <img src="${img.url}" alt="${img.title}">
-        </a>
-        <div class="caption">${img.title}</div>
-      `;
-      gallery.appendChild(div);
-    });
-  GLightbox({ selector: ".glightbox" });
-}
+    const full = img.getAttribute("data-full") || img.src;
+    const caption = img.getAttribute("data-caption") || "Image";
 
-filter.addEventListener("change", () => renderGallery(filter.value));
-renderGallery();
+    lightboxImg.src = full;
+    lightboxImg.alt = caption;
+    lightboxCaption.textContent = caption;
+
+    lightbox.classList.add("open");
+    lightbox.setAttribute("aria-hidden", "false");
+  });
+
+  function closeLightbox() {
+    lightbox.classList.remove("open");
+    lightbox.setAttribute("aria-hidden", "true");
+    lightboxImg.src = "";
+  }
+
+  closeBtn.addEventListener("click", closeLightbox);
+  lightbox.addEventListener("click", (e) => {
+    if (e.target === lightbox) closeLightbox();
+  });
+
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeLightbox();
+  });
 </script>
+
 </body>
 </html>
